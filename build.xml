@@ -1,0 +1,127 @@
+<!--
+        * This program is free software; you can redistribute it and/or modify it under the
+        * terms of the GNU Lesser General Public License, version 2.1 as published by the Free Software
+        * Foundation.
+        *
+        * You should have received a copy of the GNU Lesser General Public License along with this
+        * program; if not, you can obtain a copy at http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
+        * or from the Free Software Foundation, Inc.,
+        * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+        *
+        * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+        * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+        * See the GNU Lesser General Public License for more details.
+        *
+        * Copyright (c) 2002-2013 Pentaho Corporation..  All rights reserved.
+-->
+<project name="enunciate-platform" basedir="." default="default" xmlns:ivy="antlib:org.apache.ivy.ant">
+    <!--
+        *NOTE* Requires git to be available on command line path
+
+        tldr: Run enunciate-platform meta-target to generate REST api docs for platform
+
+        Enunciate is designed to work on a single project. It does support multiple
+        modules in that project, but those modules need to be dependencies of
+        the parent project you are running enunciate against. In this case, we will
+        be running enunciate against extensions as the parent. Then we will add a jar
+        from data-access to extensions' lib folder. We will point enunciate at the
+        extensions src directory, but also make data-access' src available on the
+        classpath.
+
+        Steps:
+            * Pull down source for each project concerned
+            * Resolve and build each project
+            * Copy generated artifacts to the lib of the "parent" (extensions)
+            * Add projects' src to classpath for enunciate
+            * Run enunciate target
+    -->
+
+    <description>Generate platform-wide enunciate documentation</description>
+    <property file="enunciate-platform.properties"/>
+
+    <!-- Import the common_build.xml file which contains all the default tasks -->
+    <import file="build-res/subfloor.xml"/>
+    <!--<import optional="true" file="${projects.dir}/pentaho-platform/extensions/build.xml"/>-->
+
+    <!--
+        Get sources from git for all relevant projects
+    -->
+    <target name="get-platform-sources">
+        <exec command="git clone https://github.com/pentaho/pentaho-platform ${projects.dir}/pentaho-platform"/>
+        <exec command="git clone https://github.com/pentaho/data-access ${projects.dir}/data-access"/>
+    </target>
+
+    <!--
+        Get all dependencies and build projects
+    -->
+    <target name="resolve-and-build-platform-dependencies">
+        <exec command="ant clean resolve dist" dir="${projects.dir}/pentaho-platform/extensions"/>
+        <exec command="ant clean resolve dist" dir="${projects.dir}/data-access"/>
+    </target>
+
+    <!--
+        Copy other generated artifacts to lib of one project to run enunciate against
+    -->
+    <target name="copy-build-artifacts">
+        <copy todir="${projects.dir}/pentaho-platform/extensions/lib">
+            <fileset dir="${projects.dir}/data-access/dist/">
+                <include name="**/*.jar"/>
+            </fileset>
+        </copy>
+    </target>
+
+    <!--
+
+    -->
+    <target name="enunciate" depends="resolve-enunciate">
+        <path id="enunciate.classpath">
+            <!--
+                include source files of all relevant projects on classpath
+                so enunciate will pick them up
+            -->
+            <dirset dir="${projects.dir}/pentaho-platform/extensions/dist"/>
+            <dirset dir="${projects.dir}/pentaho-platform/extensions/bin/classes"/>
+
+            <fileset dir="${projects.dir}/pentaho-platform/extensions/lib">
+                <include name="*.jar"/>
+            </fileset>
+
+            <fileset dir="${projects.dir}/data-access/war/WEB-INF/lib">
+            </fileset>
+
+            <fileset dir="${enunciate.home}/lib">
+                <include name="*.jar"/>
+            </fileset>
+        </path>
+
+        <taskdef name="enunciate" classname="org.codehaus.enunciate.main.EnunciateTask">
+            <classpath refid="enunciate.classpath"/>
+        </taskdef>
+
+        <enunciate dir="${projects.dir}/pentaho-platform/extensions/src"
+                   configFile="${basedir}/enunciate.xml"
+                   generateDir="${enunciate.bin.dir}/generate"
+                   compileDir="${enunciate.bin.dir}/compile"
+                   buildDir="${enunciate.bin.dir}/build"
+                   packageDir="${enunciate.bin.dir}/package"
+                   debug="true"
+                   verbose="true">
+            <include name="**/datasource/wizard/service/impl/*.java"/>
+            <include name="**/http/api/resources/*.java"/>
+            <!-- have to exclude class that contains jersey multipart endpoint
+                until http://jira.codehaus.org/browse/ENUNCIATE-537 is fixed -->
+            <exclude name="**/http/api/resources/RepositoryImportResource.java"/>
+            <exclude name="**/http/api/resources/JobScheduleRequest.java"/>
+            <exclude name="**/http/api/resources/SchedulerResource.java"/>
+            <exclude name="**/scheduler2/ComplexJobTrigger.java"/>
+
+            <classpath refid="enunciate.classpath"/>
+            <export artifactId="docs" destination="${dist.dir}/${enunciate.packagename}.zip"/>
+        </enunciate>
+    </target>
+
+    <!-- meta target to encapsulate all steps -->
+    <target name="enunciate-platform"
+            depends="clean, get-platform-sources, resolve-and-build-platform-dependencies, copy-build-artifacts, enunciate"/>
+
+</project>

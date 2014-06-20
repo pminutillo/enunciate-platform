@@ -1,0 +1,13 @@
+<enunciate basedir="bin/stage/" defaultRestSubcontext="/">
+  <modules>
+    <docs splashPackage="com.pentaho.api" title="Pentaho BIServer api doc" copyright="Pentaho.com" docsDir="apidocs">
+    </docs>
+    <c disabled="true"/>
+  	<obj-c disabled="true"/>
+  	<csharp disabled="true"/>
+     <!--<gwt disabled="true"/>-->
+  </modules>
+    <api-import pattern="**.datasource.wizard.service.impl.**"/>
+  
+  <webapp disabled="true" />
+</enunciate>
