@@ -7,7 +7,6 @@
   	<csharp disabled="true"/>
      <!--<gwt disabled="true"/>-->
   </modules>
-    <api-import pattern="**.datasource.wizard.service.impl.**"/>
-  
+
   <webapp disabled="true" />
 </enunciate>

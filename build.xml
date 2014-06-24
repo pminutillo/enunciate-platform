@@ -57,6 +57,7 @@
     <target name="resolve-and-build-platform-dependencies">
         <exec command="ant clean resolve dist" dir="${projects.dir}/pentaho-platform/extensions"/>
         <exec command="ant clean resolve dist" dir="${projects.dir}/data-access"/>
+        <exec command="ant dist-source" dir="${projects.dir}/data-access"/>
     </target>
 
     <!--
@@ -68,10 +69,24 @@
                 <include name="**/*.jar"/>
             </fileset>
         </copy>
+        <copy todir="${projects.dir}/sources">
+            <fileset dir="${projects.dir}/data-access/dist/">
+                <include name="**/*-sources.jar"/>
+            </fileset>
+        </copy>
     </target>
 
-    <!--
+	<!--
+		Copy all src to parent project dir
+	-->
+	<target name="combine-src">
+		<copy todir="${projects.dir}/pentaho-platform/extensions/src">
+			<fileset dir="${projects.dir}/data-access/src"/>
+		</copy>
+	</target>
 
+    <!--
+		Run enunciate
     -->
     <target name="enunciate" depends="resolve-enunciate">
         <path id="enunciate.classpath">
@@ -87,6 +102,9 @@
             </fileset>
 
             <fileset dir="${projects.dir}/data-access/war/WEB-INF/lib">
+            </fileset>
+
+            <fileset dir="${projects.dir}/sources">
             </fileset>
 
             <fileset dir="${enunciate.home}/lib">
@@ -106,7 +124,7 @@
                    packageDir="${enunciate.bin.dir}/package"
                    debug="true"
                    verbose="true">
-            <include name="**/datasource/wizard/service/impl/*.java"/>
+            <include name="**/datasource/wizard/service/impl/DatasourceResource.java"/>
             <include name="**/http/api/resources/*.java"/>
             <!-- have to exclude class that contains jersey multipart endpoint
                 until http://jira.codehaus.org/browse/ENUNCIATE-537 is fixed -->
@@ -114,6 +132,7 @@
             <exclude name="**/http/api/resources/JobScheduleRequest.java"/>
             <exclude name="**/http/api/resources/SchedulerResource.java"/>
             <exclude name="**/scheduler2/ComplexJobTrigger.java"/>
+            <exclude name="**/wizard/service/impl/InMemoryDSWDatasourceServiceImpl.java"/>
 
             <classpath refid="enunciate.classpath"/>
             <export artifactId="docs" destination="${dist.dir}/${enunciate.packagename}.zip"/>
@@ -122,6 +141,6 @@
 
     <!-- meta target to encapsulate all steps -->
     <target name="enunciate-platform"
-            depends="clean, get-platform-sources, resolve-and-build-platform-dependencies, copy-build-artifacts, enunciate"/>
+            depends="get-platform-sources, resolve-and-build-platform-dependencies, copy-build-artifacts, combine-src, enunciate"/>
 
 </project>
